@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-import { register as firebaseRegister } from "../../lib/auth" // relative path to lib/auth.ts
+import { register as firebaseRegister } from "@/lib/auth" 
 
 export default function RegisterPage() {
   const [email, setEmail] = useState<string>("")
@@ -34,7 +34,7 @@ export default function RegisterPage() {
     try {
       await firebaseRegister(email, password)
       console.log("User registered")
-      router.push("/game")
+      router.push("/game/level1")
     } catch (err: any) {
       setError(err?.message ?? "Registration failed")
       console.error("Register error", err)
