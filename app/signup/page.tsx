@@ -10,12 +10,12 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-// IMPORTANT: import the login helper from lib/auth (not the firebase instance)
-import { login } from "@/lib/auth"
+import { register as firebaseRegister } from "../../lib/auth" // relative path to lib/auth.ts
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState<string>("")
   const [password, setPassword] = useState<string>("")
+  const [confirmPassword, setConfirmPassword] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,15 +24,20 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    setLoading(true)
     try {
-      const credential = await login(email, password) // uses lib/auth.ts -> signInWithEmailAndPassword(auth,...)
-      console.log("Signed in user", credential.user)
+      await firebaseRegister(email, password)
+      console.log("User registered")
       router.push("/game")
     } catch (err: any) {
-      setError(err?.message ?? "Failed to sign in")
-      console.error("Login error", err)
+      setError(err?.message ?? "Registration failed")
+      console.error("Register error", err)
     } finally {
       setLoading(false)
     }
@@ -121,7 +126,7 @@ export default function LoginPage() {
               Syntax Saga
             </CardTitle>
           </div>
-          <CardDescription className="text-muted-foreground text-lg">Dive into your coding adventure</CardDescription>
+          <CardDescription className="text-muted-foreground text-lg">Create your account and set sail</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -156,12 +161,27 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-foreground font-medium">
+                Confirm Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-background/50 border-primary/30 focus:border-primary focus:ring-primary/20"
+                required
+              />
+            </div>
+
             <Button
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-semibold py-3 transition-all duration-300 transform hover:scale-[1.02]"
             >
-              {loading ? "Hoisting sails..." : "Set Sail"}
+              {loading ? "Preparing the ship..." : "Join the Crew"}
             </Button>
           </form>
 
@@ -172,8 +192,8 @@ export default function LoginPage() {
           )}
 
           <div className="text-center">
-            <Link href="/signup" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              Forgot your treasure map?
+            <Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              Need help with verification?
             </Link>
           </div>
 
@@ -183,7 +203,7 @@ export default function LoginPage() {
             <Button
               variant="outline"
               className="w-full border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 bg-transparent"
-              onClick={() => alert("Social sign in not implemented yet")}
+              onClick={() => alert("Social sign up not implemented yet")}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path
@@ -209,7 +229,7 @@ export default function LoginPage() {
             <Button
               variant="outline"
               className="w-full border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 bg-transparent"
-              onClick={() => alert("Social sign in not implemented yet")}
+              onClick={() => alert("Social sign up not implemented yet")}
             >
               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.024-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.097.118.112.221.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.748-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001.012.017z" />
@@ -222,9 +242,9 @@ export default function LoginPage() {
 
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              New to the crew?{" "}
-              <Link href="/signup" className="text-primary hover:text-secondary transition-colors font-medium">
-                Join the adventure
+              Already sailing with us?{" "}
+              <Link href="/login" className="text-primary hover:text-secondary transition-colors font-medium">
+                Sign in
               </Link>
             </p>
           </div>
