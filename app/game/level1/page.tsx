@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react"
 import { Canvas, useThree } from "@react-three/fiber"
-import { Environment, useGLTF } from "@react-three/drei"
+import { useGLTF } from "@react-three/drei"
 import ProgrammingBar, { type CommandBlock } from "@/components/ProgrammingBar"
 import AnimatedSeahorse, { type SeahorsePosition } from "@/components/AnimatedSeahorse"
 
@@ -52,9 +52,11 @@ export default function Level1() {
     return x >= BOUNDARY.minX && x <= BOUNDARY.maxX && z >= BOUNDARY.minZ && z <= BOUNDARY.maxZ
   }
 
-  const isLevelComplete = (): boolean => {
-    return forwardSteps >= REQUIRED_FORWARD_STEPS
+ 
+  const isLevelComplete = (currentSteps: number): boolean => {
+    return currentSteps >= REQUIRED_FORWARD_STEPS
   }
+  
 
   const executeProgram = (commands: CommandBlock[]) => {
     if (commands.length === 0) return
@@ -64,7 +66,7 @@ export default function Level1() {
     executeNextCommand(commands, 0, { ...seahorsePosition })
   }
 
-  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition) => {
+  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition, currentStepCount: number = 0) => {
     if (index >= commands.length) {
       setIsExecuting(false)
       return
@@ -72,12 +74,14 @@ export default function Level1() {
 
     const command = commands[index]
     const newPosition = { ...currentPos }
+    let newStepCount = currentStepCount
 
     switch (command.type) {
       case "forward":
         newPosition.x += Math.cos(newPosition.rotation) * 4.5
         newPosition.z += Math.sin(newPosition.rotation) * 4.5
-        setForwardSteps(prev => prev + 1) // Count forward steps
+        newStepCount += 1 // Count forward steps
+        setForwardSteps(newStepCount) // Update state
         break
       case "backward":
         newPosition.x -= Math.cos(newPosition.rotation) * 4.5
@@ -109,7 +113,7 @@ export default function Level1() {
     setSeahorsePosition(newPosition)
 
     // 🏁 Check for level completion after forward step
-    if (command.type === "forward" && isLevelComplete()) {
+    if (command.type === "forward" && isLevelComplete(newStepCount)) {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
@@ -118,7 +122,7 @@ export default function Level1() {
     }
 
     setTimeout(() => {
-      executeNextCommand(commands, index + 1, newPosition)
+      executeNextCommand(commands, index + 1, newPosition, newStepCount)
     }, 1200)
   }
 
@@ -136,7 +140,11 @@ export default function Level1() {
   }
 
   const handleNextLevel = () => {
-    window.location.href = "/level2" // 🔗 change route as needed
+    window.location.href = "/game/level2" // 🔗 Navigate to Level 2
+  }
+
+  const handleReset = () => {
+    window.location.href = "/game/level1" // 🔗 Navigate back to Level 1
   }
 
   return (
@@ -152,7 +160,6 @@ export default function Level1() {
             <Base />
             <AnimatedSeahorse position={seahorsePosition} isAnimating={isExecuting} onAnimationComplete={() => {}} />
             <CameraController />
-            <Environment preset="sunset" />
           </Suspense>
         </Canvas>
       </div>
@@ -171,27 +178,50 @@ export default function Level1() {
 
       {/* ✅ Level Completed Popup */}
       {levelCompleted && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl text-center w-96">
-            <h2 className="text-3xl font-bold text-yellow-600 mb-4">WELL DONE!</h2>
-            <p className="text-gray-700 mb-6">🎉 You reached the goal successfully!</p>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={handleReplay}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-              >
-                Replay
-              </button>
-              <button
-                onClick={handleNextLevel}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold"
-              >
-                Next Level
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+  <div className="fixed inset-0 bg-sky-100 bg-opacity-70 flex items-center justify-center z-50">
+    <div className="relative bg-white rounded-3xl shadow-2xl p-8 w-96 text-center border-4 border-yellow-300">
+      {/* Stars */}
+      <div className="flex justify-center mb-4">
+        <span className="text-yellow-400 text-4xl">⭐</span>
+        <span className="text-yellow-400 text-4xl mx-1">⭐</span>
+        <span className="text-gray-300 text-4xl">⭐</span>
+      </div>
+
+      <h2 className="text-2xl font-extrabold text-gray-800 mb-2">WELL DONE!</h2>
+      <p className="text-gray-600 mb-6">You used <b>9 commands</b>. Try using <b>6</b> or fewer for 3 stars!</p>
+
+      <div className="flex justify-center gap-3">
+        <button
+          onClick={handleReplay}
+          className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
+        >
+          ↻ Replay
+        </button>
+         <button
+           onClick={handleReset}
+           className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
+         >
+           ⟳ Reset
+         </button>
+        <button
+          onClick={handleNextLevel}
+          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
+        >
+          ➜ Next
+        </button>
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={() => setLevelCompleted(false)}
+        className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-lg font-bold"
+      >
+        ×
+      </button>
+    </div>
+  </div>
+)}
+
     </div>
   )
 }

@@ -41,30 +41,69 @@ function CommandBlockComponent({
   onRemove?: (blockId: string) => void
   isInProgram?: boolean
 }) {
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  const getTooltipContent = (type: CommandType) => {
+    switch (type) {
+      case "forward":
+        return { title: "Forward", description: "Move the seahorse forward in the direction it's facing" }
+      case "backward":
+        return { title: "Backward", description: "Move the seahorse backward (opposite direction)" }
+      case "turnLeft":
+        return { title: "Turn Left", description: "Rotate the seahorse 90° to the left" }
+      case "turnRight":
+        return { title: "Turn Right", description: "Rotate the seahorse 90° to the right" }
+      case "turnAround":
+        return { title: "Turn Around", description: "Rotate the seahorse 180° (face opposite direction)" }
+      case "wait":
+        return { title: "Wait", description: "Pause for one step - seahorse stays in place" }
+      default:
+        return { title: "Command", description: "Programming command" }
+    }
+  }
+
+  const tooltip = getTooltipContent(block.type)
+
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, block)}
-      onDragEnd={onDragEnd}
-      className={cn(
-        "flex items-center justify-center w-10 h-10 rounded-md cursor-move transition-all duration-200 select-none",
-        isDragging && "opacity-50 scale-95",
-        isInProgram && "hover:shadow-lg",
-      )}
-      style={{
-        backgroundColor: COMMAND_TYPES[block.type].color,
-        boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.3)" : "0 2px 4px rgba(0,0,0,0.2)",
-      }}
-    >
-      <span className="text-white text-sm font-bold">{COMMAND_TYPES[block.type].icon}</span>
-      {isInProgram && onRemove && (
-        <button
-          onClick={() => onRemove(block.id)}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors"
-          style={{ fontSize: "10px" }}
-        >
-          ×
-        </button>
+    <div className="relative">
+      <div
+        draggable
+        onDragStart={(e) => onDragStart(e, block)}
+        onDragEnd={onDragEnd}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={cn(
+          "flex items-center justify-center w-10 h-10 rounded-md cursor-move transition-all duration-200 select-none",
+          isDragging && "opacity-50 scale-95",
+          isInProgram && "hover:shadow-lg",
+        )}
+        style={{
+          backgroundColor: COMMAND_TYPES[block.type].color,
+          boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.3)" : "0 2px 4px rgba(0,0,0,0.2)",
+        }}
+      >
+        <span className="text-white text-sm font-bold">{COMMAND_TYPES[block.type].icon}</span>
+        {isInProgram && onRemove && (
+          <button
+            onClick={() => onRemove(block.id)}
+            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors"
+            style={{ fontSize: "10px" }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Tooltip */}
+      {showTooltip && !isDragging && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
+          <div className="bg-gray-900 text-white text-sm rounded-lg px-3 py-2 shadow-lg border border-gray-700 min-w-max">
+            <div className="font-semibold text-yellow-400">{tooltip.title}</div>
+            <div className="text-gray-200 text-xs mt-1 max-w-48">{tooltip.description}</div>
+            {/* Arrow */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+          </div>
+        </div>
       )}
     </div>
   )
