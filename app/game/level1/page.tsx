@@ -5,6 +5,8 @@ import { Canvas, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import ProgrammingBar, { type CommandBlock } from "@/components/ProgrammingBar"
 import AnimatedSeahorse, { type SeahorsePosition } from "@/components/AnimatedSeahorse"
+import CodeDisplay from "@/components/CodeDisplay"
+import { generatePythonCode } from "@/lib/codeGenerator"
 
 // 🔒 Fixed Camera Controller
 function CameraController() {
@@ -39,6 +41,7 @@ export default function Level1() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [levelCompleted, setLevelCompleted] = useState(false)
   const [forwardSteps, setForwardSteps] = useState(0)
+  const [generatedCode, setGeneratedCode] = useState<string>("")
   const [seahorsePosition, setSeahorsePosition] = useState<SeahorsePosition>({
     x: 1,
     z: -1.6,
@@ -60,6 +63,17 @@ export default function Level1() {
 
   const executeProgram = (commands: CommandBlock[]) => {
     if (commands.length === 0) return
+    
+    // Count total forward moves in the program
+    const totalForwardMoves = commands.filter(cmd => cmd.type === "forward").length
+    
+    // Check if there are more than 3 forward moves
+    if (totalForwardMoves > REQUIRED_FORWARD_STEPS) {
+      setErrorMessage("🌊 Oops! Seahorse cannot go into the water!")
+      setTimeout(() => setErrorMessage(null), 3000)
+      return
+    }
+    
     setIsExecuting(true)
     setErrorMessage(null)
     setForwardSteps(0) // Reset step counter for new program
@@ -147,26 +161,44 @@ export default function Level1() {
     window.location.href = "/game/level1" // 🔗 Navigate back to Level 1
   }
 
+  const handleCommandsChange = (commands: CommandBlock[]) => {
+    const code = generatePythonCode(commands)
+    setGeneratedCode(code)
+  }
+
   return (
     <div className="w-screen h-screen bg-sky-200 relative flex flex-col">
-      {/* 3D Canvas */}
-      <div className="flex-1">
-        <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[10, 15, 10]} intensity={1.4} />
+      {/* Main Content Area - Canvas and Code Display */}
+      <div className="flex-1 flex gap-4 p-4">
+        {/* Left Side - 3D Canvas */}
+        <div className="flex-1">
+          <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
-          <Suspense fallback={null}>
-            <Sea />
-            <Base />
-            <AnimatedSeahorse position={seahorsePosition} isAnimating={isExecuting} onAnimationComplete={() => {}} />
-            <CameraController />
-          </Suspense>
-        </Canvas>
+            <Suspense fallback={null}>
+              <Sea />
+              <Base />
+              <AnimatedSeahorse position={seahorsePosition} isAnimating={isExecuting} onAnimationComplete={() => {}} />
+              <CameraController />
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Right Side - Code Display */}
+        <div className="w-96">
+          <CodeDisplay code={generatedCode} />
+        </div>
       </div>
 
       {/* Programming Bar */}
       <div className="bg-sky-200 p-4">
-        <ProgrammingBar onExecuteProgram={executeProgram} isExecuting={isExecuting} onRefresh={handleRefresh} />
+        <ProgrammingBar 
+          onExecuteProgram={executeProgram} 
+          isExecuting={isExecuting} 
+          onRefresh={handleRefresh}
+          onCommandsChange={handleCommandsChange}
+        />
       </div>
 
       {/* Error Popup */}
@@ -176,7 +208,7 @@ export default function Level1() {
         </div>
       )}
 
-      {/* ✅ Level Completed Popup */}
+    {/* ✅ Level Completed Popup */}
       {levelCompleted && (
   <div className="fixed inset-0 bg-sky-100 bg-opacity-70 flex items-center justify-center z-50">
     <div className="relative bg-white rounded-3xl shadow-2xl p-8 w-96 text-center border-4 border-yellow-300">
@@ -188,26 +220,21 @@ export default function Level1() {
       </div>
 
       <h2 className="text-2xl font-extrabold text-gray-800 mb-2">WELL DONE!</h2>
-      <p className="text-gray-600 mb-6">You used <b>9 commands</b>. Try using <b>6</b> or fewer for 3 stars!</p>
+      <p className="text-gray-600 mb-6">You have completed the level successfully.</p>
 
       <div className="flex justify-center gap-3">
         <button
-          onClick={handleReplay}
+          onClick={handleReset}
           className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
         >
-          ↻ Replay
+          ⟳ Reset
         </button>
-         <button
-           onClick={handleReset}
-           className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
-         >
-           ⟳ Reset
-         </button>
+         
         <button
           onClick={handleNextLevel}
           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
         >
-          ➜ Next
+          ➜ Take Quiz
         </button>
       </div>
 
@@ -222,6 +249,8 @@ export default function Level1() {
   </div>
 )}
 
+
+     
     </div>
   )
 }

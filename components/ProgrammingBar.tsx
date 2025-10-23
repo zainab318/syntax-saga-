@@ -114,9 +114,10 @@ interface ProgrammingBarProps {
   onExecuteProgram?: (commands: CommandBlock[]) => void
   isExecuting?: boolean
   onRefresh?: () => void
+  onCommandsChange?: (commands: CommandBlock[]) => void
 }
 
-export default function ProgrammingBar({ onExecuteProgram, isExecuting = false, onRefresh }: ProgrammingBarProps) {
+export default function ProgrammingBar({ onExecuteProgram, isExecuting = false, onRefresh, onCommandsChange }: ProgrammingBarProps) {
   const [programBlocks, setProgramBlocks] = useState<CommandBlock[]>([])
   const [draggedBlock, setDraggedBlock] = useState<CommandBlock | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -147,7 +148,11 @@ export default function ProgrammingBar({ onExecuteProgram, isExecuting = false, 
         ...draggedBlock,
         id: `program-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       }
-      setProgramBlocks((prev) => [...prev, newBlock])
+      setProgramBlocks((prev) => {
+        const updated = [...prev, newBlock]
+        onCommandsChange?.(updated)
+        return updated
+      })
     }
   }
 
@@ -157,16 +162,22 @@ export default function ProgrammingBar({ onExecuteProgram, isExecuting = false, 
   }
 
   const removeBlock = (blockId: string) => {
-    setProgramBlocks((prev) => prev.filter((block) => block.id !== blockId))
+    setProgramBlocks((prev) => {
+      const updated = prev.filter((block) => block.id !== blockId)
+      onCommandsChange?.(updated)
+      return updated
+    })
   }
 
   const clearProgram = () => {
     setProgramBlocks([])
+    onCommandsChange?.([])
   }
 
   const handleRefresh = () => {
     setProgramBlocks([])
     setIsPlaying(false)
+    onCommandsChange?.([])
     onRefresh?.()
   }
 
