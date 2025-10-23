@@ -154,7 +154,11 @@ export default function Level1() {
   }
 
   const handleNextLevel = () => {
-    window.location.href = "/game/level2" // 🔗 Navigate to Level 2
+    window.location.href = "/game/Level2" // 🔗 Navigate to Level 2
+  }
+
+  const handleTakeQuiz = () => {
+    window.location.href = "/game/level1/quiz" // 🔗 Navigate to Quiz
   }
 
   const handleReset = () => {
@@ -164,6 +168,9 @@ export default function Level1() {
   const handleCommandsChange = (commands: CommandBlock[]) => {
     const code = generatePythonCode(commands)
     setGeneratedCode(code)
+    try {
+      localStorage.setItem("ss_level1_generated_code", code)
+    } catch (_) {}
   }
 
   return (
@@ -227,11 +234,11 @@ export default function Level1() {
           onClick={handleReset}
           className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
         >
-          ⟳ Reset
+          ⟳ Replay
         </button>
          
         <button
-          onClick={handleNextLevel}
+          onClick={handleTakeQuiz}
           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
         >
           ➜ Take Quiz

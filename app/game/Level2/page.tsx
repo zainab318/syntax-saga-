@@ -5,6 +5,8 @@ import { Canvas, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import ProgrammingBar, { type CommandBlock } from "@/components/ProgrammingBar"
 import AnimatedSeahorse, { type SeahorsePosition } from "@/components/AnimatedSeahorse"
+import CodeDisplay from "@/components/CodeDisplay"
+import { generatePythonCode } from "@/lib/codeGenerator"
 
 // 🔒 Fixed Camera Controller
 function CameraController() {
@@ -51,6 +53,7 @@ export default function Level2() {
   const [levelCompleted, setLevelCompleted] = useState(false)
   const [forwardSteps, setForwardSteps] = useState(0)
   const [rightTurns, setRightTurns] = useState(0)
+  const [generatedCode, setGeneratedCode] = useState<string>("")
   const [coinCollected, setCoinCollected] = useState(false)
   const [seahorsePosition, setSeahorsePosition] = useState<SeahorsePosition>({
     x: -3.5,
@@ -178,31 +181,52 @@ export default function Level2() {
     window.location.href = "/game/level1" // 🔗 Navigate back to Level 1
   }
 
+  const handleCommandsChange = (commands: CommandBlock[]) => {
+    const code = generatePythonCode(commands)
+    setGeneratedCode(code)
+    try {
+      localStorage.setItem("ss_level2_generated_code", code)
+    } catch (_) {}
+  }
+
   return (
     <div className="w-screen h-screen bg-sky-200 relative flex flex-col">
-      {/* 3D View */}
-      <div className="flex-1">
-        <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[10, 15, 10]} intensity={1.4} />
+      {/* Main Content Area - Canvas and Code Display */}
+      <div className="flex-1 flex gap-4 p-4">
+        {/* 3D View */}
+        <div className="flex-1">
+          <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
-          <Suspense fallback={null}>
-            <Sea />
-            <Base />
-            <Coin visible={!coinCollected} />
-            <AnimatedSeahorse
-              position={seahorsePosition}
-              isAnimating={isExecuting}
-              onAnimationComplete={() => {}}
-            />
-            <CameraController />
-          </Suspense>
-        </Canvas>
+            <Suspense fallback={null}>
+              <Sea />
+              <Base />
+              <Coin visible={!coinCollected} />
+              <AnimatedSeahorse
+                position={seahorsePosition}
+                isAnimating={isExecuting}
+                onAnimationComplete={() => {}}
+              />
+              <CameraController />
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Code Display */}
+        <div className="w-96">
+          <CodeDisplay code={generatedCode} />
+        </div>
       </div>
 
       {/* Programming Bar */}
       <div className="bg-sky-200 p-4">
-        <ProgrammingBar onExecuteProgram={executeProgram} isExecuting={isExecuting} onRefresh={handleRefresh} />
+        <ProgrammingBar 
+          onExecuteProgram={executeProgram} 
+          isExecuting={isExecuting} 
+          onRefresh={handleRefresh}
+          onCommandsChange={handleCommandsChange}
+        />
       </div>
 
       {/* Error Message */}
