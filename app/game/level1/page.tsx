@@ -12,8 +12,10 @@ import { generatePythonCode } from "@/lib/codeGenerator"
 function CameraController() {
   const { camera } = useThree()
   useEffect(() => {
-    camera.position.set(25, 15, 15)
-    camera.lookAt(4, 2, 0)
+    camera.position.set(26, 17, 22)
+    camera.lookAt(-2, 2, -2)
+    // @ts-ignore
+    ;(camera as any).fov = 55
     camera.updateProjectionMatrix()
   }, [camera])
   return null
@@ -166,7 +168,7 @@ export default function Level1() {
   }
 
   const handleCommandsChange = (commands: CommandBlock[]) => {
-    const code = generatePythonCode(commands)
+    const code = generatePythonCode(commands, { level: 1 })
     setGeneratedCode(code)
     try {
       localStorage.setItem("ss_level1_generated_code", code)
@@ -178,8 +180,8 @@ export default function Level1() {
       {/* Main Content Area - Canvas and Code Display */}
       <div className="flex-1 flex gap-4 p-4">
         {/* Left Side - 3D Canvas */}
-        <div className="flex-1">
-          <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
+        <div className="flex-[1.2] min-w-[520px]">
+        <Canvas camera={{ fov: 55 }}>
             <ambientLight intensity={0.7} />
             <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
@@ -193,7 +195,7 @@ export default function Level1() {
         </div>
 
         {/* Right Side - Code Display */}
-        <div className="w-96">
+        <div className="w-[380px]">
           <CodeDisplay code={generatedCode} />
         </div>
       </div>

@@ -11,7 +11,16 @@ interface QuizQuestion {
   explanation: string
 }
 
-export default function Level1Quiz() {
+interface CodeQuestion {
+  type: 'code'
+  question: string
+  hint: string
+  initialCode: string
+  expectedOutput: string
+  explanation: string
+}
+
+export default function Level2Quiz() {
   const router = useRouter()
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -24,44 +33,70 @@ export default function Level1Quiz() {
   const [codeCorrect, setCodeCorrect] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Seed localStorage with the latest program code if none exists
+    if (!localStorage.getItem("ss_level2_generated_code")) {
+      const defaultCode = [
+        "steps = 3",
+        "turns = 2",
+        "",
+        "print(\"The seahorse will move forward \" + str(steps) + \" times!\")",
+        "",
+        "print(\"move forward\")",
+        "print(\"move forward\")",
+        "print(\"move forward\")",
+        "",
+        "print(\"coin collected\")",
+        "",
+        "print(\"The seahorse will turn right \" + str(turns) + \" times!\")",
+        "",
+        "print(\"turn right\")",
+        "print(\"turn right\")",
+      ].join("\n")
+      try { localStorage.setItem("ss_level2_generated_code", defaultCode) } catch (_) {}
+    }
     fetchQuiz()
   }, [])
 
   const fetchQuiz = async () => {
     try {
-      console.log("Fetching quiz for Level 1...")
-      const playerCode = localStorage.getItem("ss_level1_generated_code") ?? ""
+      console.log("Fetching quiz for Level 2...")
+      const playerCode = localStorage.getItem("ss_level2_generated_code") ?? ""
       console.log("Player code:", playerCode)
       
-      // Use hardcoded questions for Level 1
+      // Level 2 specific questions based on the code generator format
       const hardcodedQuestions: QuizQuestion[] = [
         {
-          question: "Which print statement shows moving forward?",
+          question: "What does the variable 'steps' represent in Level 2?",
           options: [
-            "print(\"move forward\")",
-            "print(\"swim forward\")", 
-            "print(\"go forward\")",
-            "move_forward()"
-          ],
-          correctAnswer: 0,
-          explanation: "We use simple print statements: print(\"move forward\")"
-        },
-        {
-          question: "How many forward moves are needed to complete Level 1?",
-          options: ["1", "2", "3", "4"],
-          correctAnswer: 2,
-          explanation: "Level 1 requires exactly 3 forward moves to complete"
-        },
-        {
-          question: "What happens if you use more than 3 forward moves in Level 1?",
-          options: [
-            "Nothing special",
-            "🌊 Oops! Seahorse cannot go into the water!",
-            "It turns right automatically",
-            "It collects a coin"
+            "Number of turns",
+            "Number of forward moves", 
+            "Number of coins collected",
+            "Number of seconds to wait"
           ],
           correctAnswer: 1,
-          explanation: "Level 1 shows a friendly warning when you try to go too far into the water"
+          explanation: "The 'steps' variable stores how many times the seahorse will move forward (3 times)"
+        },
+        {
+          question: "What does this code do: print(\"The seahorse will move forward \" + str(steps) + \" times!\")?",
+          options: [
+            "Moves the seahorse forward",
+            "Shows a friendly message with the number of steps",
+            "Collects a coin",
+            "Turns the seahorse right"
+          ],
+          correctAnswer: 1,
+          explanation: "This creates a friendly message that shows how many times the seahorse will move forward using string concatenation"
+        },
+        {
+          question: "When does the seahorse collect the coin in Level 2?",
+          options: [
+            "Before moving forward",
+            "After the 1st forward move",
+            "After the 3rd forward move",
+            "After turning right"
+          ],
+          correctAnswer: 2,
+          explanation: "The coin is collected right after the seahorse completes all 3 forward moves"
         }
       ]
       
@@ -82,24 +117,21 @@ export default function Level1Quiz() {
 
   const handleSubmitAnswer = () => {
     if (selectedAnswer === null || !questions) return
-    
     const isCorrect = selectedAnswer === questions[currentQuestion].correctAnswer
-    if (isCorrect) {
-      setScore(score + 1)
-    }
+    if (isCorrect) setScore((s) => s + 1)
     setShowExplanation(true)
   }
 
   const handleNextQuestion = () => {
     if (!questions) return
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+      setCurrentQuestion((q) => q + 1)
       setSelectedAnswer(null)
       setShowExplanation(false)
     } else {
       // After 3 MCQs, show code editor question
       if (currentQuestion === questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1)
+        setCurrentQuestion((q) => q + 1)
         setSelectedAnswer(null)
         setShowExplanation(false)
       } else {
@@ -118,22 +150,8 @@ export default function Level1Quiz() {
     setQuizCompleted(true)
   }
 
-  const handleRetry = () => {
-    setCurrentQuestion(0)
-    setSelectedAnswer(null)
-    setShowExplanation(false)
-    setScore(0)
-    setQuizCompleted(false)
-    fetchQuiz()
-  }
-
-  const handleGoToNextLevel = () => {
-    router.push("/game/Level2")
-  }
-
-  const handleBackToLevel = () => {
-    router.push("/game/level1")
-  }
+  const handleBackToLevel = () => router.push("/game/Level2")
+  const handleGoToNextLevel = () => router.push("/game/level3")
 
   if (loading) {
     return (
@@ -141,68 +159,6 @@ export default function Level1Quiz() {
         <div className="text-center">
           <div className="text-6xl mb-4 animate-bounce">🐚</div>
           <p className="text-white text-2xl font-bold">Generating your quiz...</p>
-          <p className="text-cyan-100 mt-2">The seahorse is preparing questions!</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (quizCompleted && questions) {
-    const totalQuestions = questions.length + 1 // 3 MCQs + 1 code question
-    const percentage = (score / totalQuestions) * 100
-    const passed = percentage >= 60
-
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-2xl border-4 border-cyan-500">
-          <div className="text-center">
-            <div className="text-6xl mb-4">
-              {passed ? "🎉" : "🌊"}
-            </div>
-            <h1 className="text-3xl font-extrabold text-gray-800 mb-4">
-              {passed ? "Amazing Work!" : "Keep Swimming!"}
-            </h1>
-            <div className="bg-gradient-to-r from-cyan-100 to-blue-100 rounded-xl p-6 mb-6">
-              <p className="text-5xl font-bold text-blue-600 mb-2">
-                {score}/{totalQuestions}
-              </p>
-              <p className="text-gray-600">Correct Answers</p>
-              <p className="text-2xl font-bold text-cyan-600 mt-2">{percentage.toFixed(0)}%</p>
-            </div>
-
-            {passed ? (
-              <p className="text-gray-700 mb-6">
-                🐚 Excellent! You've mastered the basics. Ready for the next level?
-              </p>
-            ) : (
-              <p className="text-gray-700 mb-6">
-                🌊 Don't give up! Try the level again to learn more, then retake the quiz!
-              </p>
-            )}
-
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={handleBackToLevel}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all"
-              >
-                ↩ Back to Level
-              </button>
-              <button
-                onClick={handleRetry}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all"
-              >
-                🔄 Retry Quiz
-              </button>
-              {passed && (
-                <button
-                  onClick={handleGoToNextLevel}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all"
-                >
-                  ➜ Next Level
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -213,12 +169,39 @@ export default function Level1Quiz() {
       <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center">
         <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
           <p className="text-xl text-gray-800">Failed to load quiz. Please try again.</p>
-          <button
-            onClick={handleBackToLevel}
-            className="mt-4 bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-full font-semibold"
-          >
+          <button onClick={handleBackToLevel} className="mt-4 bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-full font-semibold">
             Back to Level
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (quizCompleted) {
+    const totalQuestions = questions ? questions.length + 1 : 4 // 3 MCQs + 1 code question
+    const percentage = (score / totalQuestions) * 100
+    const passed = percentage >= 60
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-2xl border-4 border-cyan-500">
+          <div className="text-center">
+            <div className="text-6xl mb-4">{passed ? "🎉" : "🌊"}</div>
+            <h1 className="text-3xl font-extrabold text-gray-800 mb-4">{passed ? "Great job!" : "Keep swimming!"}</h1>
+            <div className="bg-gradient-to-r from-cyan-100 to-blue-100 rounded-xl p-6 mb-6">
+              <p className="text-5xl font-bold text-blue-600 mb-2">{score}/{totalQuestions}</p>
+              <p className="text-gray-600">Correct Answers</p>
+            </div>
+            <div className="flex gap-3 justify-center">
+              <button onClick={handleBackToLevel} className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all">
+                ↩ Back to Level
+              </button>
+              {passed && (
+                <button onClick={handleGoToNextLevel} className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg transition-all">
+                  ➜ Next Level
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -230,11 +213,11 @@ export default function Level1Quiz() {
 
   if (isCodeQuestion) {
     const codeQuestion = {
-      question: "🐚 Code Challenge: Write a simple print statement!",
-      hint: "Use the print() function to display 'move forward'. Remember the syntax: print('your text here')",
+      question: "🐚 Code Challenge: Create a variable and use string concatenation!",
+      hint: "Create a variable called 'steps' with value 3, then use string concatenation to print a message. Example: steps = 3, then print(\"The seahorse will move \" + str(steps) + \" times!\")",
       initialCode: "",
-      expectedOutput: "move forward",
-      explanation: "Great job! You used the print() function correctly. This is how we display text in Python - just like the seahorse's movement commands!"
+      expectedOutput: "The seahorse will move 3 times!",
+      explanation: "Excellent! You used a variable and string concatenation correctly. This is how we create dynamic messages in Python - just like in the Level 2 code generator!"
     }
 
     return (
@@ -244,7 +227,7 @@ export default function Level1Quiz() {
             <div className="flex items-center gap-3">
               <span className="text-4xl">🐚</span>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Level 1 Quiz</h1>
+                <h1 className="text-2xl font-bold text-gray-800">Level 2 Quiz</h1>
                 <p className="text-sm text-gray-500">Code Challenge!</p>
               </div>
             </div>
@@ -301,82 +284,51 @@ export default function Level1Quiz() {
     )
   }
 
-  const question = questions![currentQuestion]
+  const question = questions[currentQuestion]
   const isCorrect = selectedAnswer === question.correctAnswer
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-400 to-blue-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-2xl border-4 border-cyan-500">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <span className="text-4xl">🐚</span>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Level 1 Quiz</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Level 2 Quiz</h1>
               <p className="text-sm text-gray-500">Test your coding knowledge!</p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-500">Question</p>
-            <p className="text-2xl font-bold text-cyan-600">
-              {currentQuestion + 1}/{totalQuestions}
-            </p>
+            <p className="text-2xl font-bold text-cyan-600">{currentQuestion + 1}/{totalQuestions}</p>
           </div>
         </div>
 
-        {/* Progress Bar */}
         <div className="mb-6">
           <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${((currentQuestion + 1) / totalQuestions) * 100}%` }}
-            ></div>
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full transition-all duration-300" style={{ width: `${((currentQuestion + 1) / totalQuestions) * 100}%` }}></div>
           </div>
         </div>
 
-        {/* Question */}
         <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-6 mb-6">
           <p className="text-xl font-semibold text-gray-800">{question.question}</p>
         </div>
 
-        {/* Options */}
         <div className="space-y-3 mb-6">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index
             const isCorrectOption = index === question.correctAnswer
-            
             let bgColor = "bg-white hover:bg-cyan-50"
             let borderColor = "border-gray-300"
             let textColor = "text-gray-800"
-
             if (showExplanation) {
-              if (isCorrectOption) {
-                bgColor = "bg-green-100"
-                borderColor = "border-green-500"
-                textColor = "text-green-800"
-              } else if (isSelected && !isCorrectOption) {
-                bgColor = "bg-red-100"
-                borderColor = "border-red-500"
-                textColor = "text-red-800"
-              }
-            } else if (isSelected) {
-              bgColor = "bg-cyan-100"
-              borderColor = "border-cyan-500"
-            }
-
+              if (isCorrectOption) { bgColor = "bg-green-100"; borderColor = "border-green-500"; textColor = "text-green-800" }
+              else if (isSelected) { bgColor = "bg-red-100"; borderColor = "border-red-500"; textColor = "text-red-800" }
+            } else if (isSelected) { bgColor = "bg-cyan-100"; borderColor = "border-cyan-500" }
             return (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(index)}
-                className={`w-full p-4 rounded-xl border-2 ${bgColor} ${borderColor} transition-all text-left ${
-                  showExplanation ? "cursor-default" : "cursor-pointer hover:shadow-md"
-                }`}
-                disabled={showExplanation}
-              >
+              <button key={index} onClick={() => handleAnswerSelect(index)} className={`w-full p-4 rounded-xl border-2 ${bgColor} ${borderColor} transition-all text-left ${showExplanation ? "cursor-default" : "cursor-pointer hover:shadow-md"}`} disabled={showExplanation}>
                 <div className="flex items-center gap-3">
-                  <span className={`font-bold ${textColor}`}>
-                    {String.fromCharCode(65 + index)}.
-                  </span>
+                  <span className={`font-bold ${textColor}`}>{String.fromCharCode(65 + index)}.</span>
                   <span className={`${textColor} font-medium`}>{option}</span>
                   {showExplanation && isCorrectOption && <span className="ml-auto text-green-600 text-xl">✓</span>}
                   {showExplanation && isSelected && !isCorrectOption && <span className="ml-auto text-red-600 text-xl">✗</span>}
@@ -386,48 +338,27 @@ export default function Level1Quiz() {
           })}
         </div>
 
-        {/* Explanation */}
         {showExplanation && (
           <div className={`rounded-xl p-4 mb-6 ${isCorrect ? "bg-green-50 border-2 border-green-300" : "bg-blue-50 border-2 border-blue-300"}`}>
-            <p className="font-semibold text-gray-800 mb-2">
-              {isCorrect ? "🎉 Correct!" : "💡 Learning Moment"}
-            </p>
+            <p className="font-semibold text-gray-800 mb-2">{isCorrect ? "🎉 Correct!" : "💡 Learning Moment"}</p>
             <p className="text-gray-700">{question.explanation}</p>
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-3">
           {!showExplanation ? (
-            <button
-              onClick={handleSubmitAnswer}
-              disabled={selectedAnswer === null}
-              className={`flex-1 py-3 rounded-full font-semibold shadow-lg transition-all ${
-                selectedAnswer === null
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-xl"
-              }`}
-            >
+            <button onClick={handleSubmitAnswer} disabled={selectedAnswer === null} className={`flex-1 py-3 rounded-full font-semibold shadow-lg transition-all ${selectedAnswer === null ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-xl"}`}>
               Submit Answer
             </button>
           ) : (
-            <button
-              onClick={handleNextQuestion}
-              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all"
-            >
+            <button onClick={handleNextQuestion} className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all">
               {currentQuestion < questions.length - 1 ? "Next Question →" : "Code Challenge 🐚"}
             </button>
           )}
-        </div>
-
-        {/* Score Display */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
-            Current Score: <span className="font-bold text-cyan-600">{score}/{currentQuestion + (showExplanation ? 1 : 0)}</span>
-          </p>
         </div>
       </div>
     </div>
   )
 }
+
 

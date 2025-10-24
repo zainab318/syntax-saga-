@@ -5,7 +5,10 @@
 
 import type { CommandBlock } from "@/components/ProgrammingBar"
 
-export function generatePythonCode(commands: CommandBlock[]): string {
+type GenOptions = { level?: number }
+
+export function generatePythonCode(commands: CommandBlock[], options: GenOptions = {}): string {
+  const level = options.level ?? 1
   if (commands.length === 0) {
     return ""
   }
@@ -14,38 +17,106 @@ export function generatePythonCode(commands: CommandBlock[]): string {
 
   // Header
   codeLines.push("# 🌊 Syntax Saga - Seahorse Adventure")
-  codeLines.push("# Generated code from visual blocks")
-  codeLines.push("")
+  codeLines.push(`# Generated code from visual blocks (Level ${level})`)
 
-  // Add commands
-  commands.forEach((command, index) => {
-    const commandCode = generateCommandCode(command, index)
-    codeLines.push(commandCode)
-  })
+  codeLines.push("")
+ 
+  // Level 2: kid-friendly summary with variables and explicit lines (no f-strings)
+  if (level === 2) {
+    const steps = commands.filter((c) => c.type === "forward").length
+    const turns = commands.filter((c) => c.type === "turnRight").length
+    
+    codeLines.push(`steps = ${steps}`)
+    codeLines.push(`turns = ${turns}`)
+    codeLines.push("")
+    codeLines.push(`print("The seahorse will move forward " + str(steps) + " times!")`)
+    codeLines.push("")
+    for (let i = 0; i < steps; i++) {
+      codeLines.push(`print("move forward")`)
+    }
+    codeLines.push("")
+    codeLines.push(`print("coin collected")`)
+    codeLines.push("")
+    codeLines.push(`print("The seahorse will turn right " + str(turns) + " times!")`)
+    codeLines.push("")
+    for (let i = 0; i < turns; i++) {
+      codeLines.push(`print("turn right")`)
+    }
+
+    return codeLines.join("\n")
+  }
+
+  // Level 1: simple prints only (no loops)
+  if (level === 1) {
+    for (const command of commands) {
+      const p = (msg: string) => `print("${msg}")`
+      if (command.type === "forward") {
+        codeLines.push(p("move forward"))
+      } else if (command.type === "backward") {
+        codeLines.push(p("move backward"))
+      } else if (command.type === "turnLeft") {
+        codeLines.push(p("turn left"))
+      } else if (command.type === "turnRight") {
+        codeLines.push(p("turn right"))
+      } else if (command.type === "turnAround") {
+        codeLines.push(p("turn around"))
+      } else if (command.type === "wait") {
+        codeLines.push(p("wait"))
+      } else {
+        codeLines.push(`# Unknown command: ${command.type}`)
+      }
+    }
+  } else {
+    // Other levels: compact simple prints and loops when helpful
+    let i = 0
+    while (i < commands.length) {
+      const current = commands[i]
+      let runLen = 1
+      while (i + runLen < commands.length && commands[i + runLen].type === current.type) runLen++
+      const p = (msg: string) => `print("${msg}")`
+      if (current.type === "forward") {
+        if (runLen > 1) { codeLines.push(`for _ in range(${runLen}):`); codeLines.push(`    ${p("move forward")}`) } else { codeLines.push(p("move forward")) }
+      } else if (current.type === "backward") {
+        if (runLen > 1) { codeLines.push(`for _ in range(${runLen}):`); codeLines.push(`    ${p("move backward")}`) } else { codeLines.push(p("move backward")) }
+      } else if (current.type === "turnLeft") {
+        codeLines.push(p("turn left"))
+      } else if (current.type === "turnRight") {
+        if (runLen > 1) { codeLines.push(`for _ in range(${runLen}):`); codeLines.push(`    ${p("turn right")}`) } else { codeLines.push(p("turn right")) }
+      } else if (current.type === "turnAround") {
+        codeLines.push(p("turn around"))
+      } else if (current.type === "wait") {
+        codeLines.push(p("wait"))
+      } else {
+        codeLines.push(`# Unknown command: ${current.type}`)
+      }
+      i += runLen
+    }
+  }
 
   return codeLines.join("\n")
 }
 
-function generateCommandCode(command: CommandBlock, index: number): string {
+function generateCommandCode(
+  command: CommandBlock,
+  level: number,
+  onForward?: () => void,
+): string {
+  const p = (msg: string) => `print("${msg}")`
+
   switch (command.type) {
     case "forward":
-      return `print(f"{'move forward'}")`
-    
+      if (onForward) onForward()
+      return p("move forward")
     case "backward":
-      return `print(f"{'move backward'}")`
-    
+      return p("move backward")
     case "turnLeft":
-      return `print(f"{'turn left'}")`
-    
+      return p("turn left")
     case "turnRight":
-      return `print(f"{'turn right'}")`
-    
+      return p("turn right")
     case "turnAround":
-      return `print(f"{'turn around'}")`
-    
+      return p("turn around")
     case "wait":
-      return `print(f"{'wait'}")`
-    
+      return p("wait")
     default:
       return `# Unknown command: ${command.type}`
   }

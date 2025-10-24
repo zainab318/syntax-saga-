@@ -12,8 +12,12 @@ import { generatePythonCode } from "@/lib/codeGenerator"
 function CameraController() {
   const { camera } = useThree()
   useEffect(() => {
-    camera.position.set(25, 15, 15)
-    camera.lookAt(4, 2, 0)
+    // Pull the camera back and shift focus slightly left so the scene stays visible
+    camera.position.set(28, 18, 24)
+    camera.lookAt(-4, 2, -4)
+    // Wider field of view to keep more of the scene in frame
+    // @ts-ignore - three.js camera has fov on perspective cameras
+    ;(camera as any).fov = 55
     camera.updateProjectionMatrix()
   }, [camera])
   return null
@@ -41,8 +45,9 @@ function Coin({ visible }: { visible: boolean }) {
   
   if (!visible) return null
   
-  scene.position.set(1, 2, -6) // Position at second step location (one step forward from start)
+  scene.position.set(10, 2, -6) // Position at third step location (three steps forward from start)
   scene.scale.set(1.2, 1.2, 1.2)
+  scene.rotation.set(0, Math.PI / 4, 0) // Rotate 45 degrees to show front face
   return <primitive object={scene} />
 }
 
@@ -53,8 +58,8 @@ export default function Level2() {
   const [levelCompleted, setLevelCompleted] = useState(false)
   const [forwardSteps, setForwardSteps] = useState(0)
   const [rightTurns, setRightTurns] = useState(0)
-  const [generatedCode, setGeneratedCode] = useState<string>("")
   const [coinCollected, setCoinCollected] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string>("")
   const [seahorsePosition, setSeahorsePosition] = useState<SeahorsePosition>({
     x: -3.5,
     z: -6,
@@ -64,8 +69,8 @@ export default function Level2() {
   const BOUNDARY = { minX: -8, maxX: 8, minZ: -10, maxZ: 8 }
   const REQUIRED_FORWARD_STEPS = 3 
   const REQUIRED_RIGHT_TURNS = 2 
-  const COIN_POSITION = { x: 1, z: -6 } // Position of the coin (second step from start)
-  const COLLECTION_DISTANCE = 2 // Distance threshold for collecting the coin
+  const COIN_POSITION = { x: 10, z: -6 }  
+  const COLLECTION_DISTANCE = 8.0
 
   const isWithinBounds = (x: number, z: number) =>
     x >= BOUNDARY.minX && x <= BOUNDARY.maxX && z >= BOUNDARY.minZ && z <= BOUNDARY.maxZ
@@ -93,7 +98,7 @@ export default function Level2() {
     executeNextCommand(commands, 0, { ...seahorsePosition })
   }
 
-  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition, currentStepCount: number = 0, currentRightTurnCount: number = 0) => {
+  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition, currentStepCount: number = 0, currentRightTurnCount: number = 0, hasPlayedCoinSound: boolean = false) => {
     if (index >= commands.length) {
       setIsExecuting(false)
       return
@@ -103,6 +108,7 @@ export default function Level2() {
     const newPosition = { ...currentPos }
     let newStepCount = currentStepCount
     let newRightTurnCount = currentRightTurnCount
+    let coinSoundPlayed = hasPlayedCoinSound
 
     switch (command.type) {
       case "forward":
@@ -135,24 +141,26 @@ export default function Level2() {
 
     setSeahorsePosition(newPosition)
 
-    // 🪙 Check if coin is collected
-    if (!coinCollected && checkCoinCollection(newPosition.x, newPosition.z)) {
+    // 🪙 Check if coin is collected; play sound immediately upon touch (once)
+    if (!coinSoundPlayed && checkCoinCollection(newPosition.x, newPosition.z)) {
       setCoinCollected(true)
+      coinSoundPlayed = true
+      try { playCoinSound() } catch {}
     }
 
-    // 🏁 Check for level completion
+    // 🏁 Check for level completion -> show modal with actions (Replay or Take Quiz)
     if (isLevelComplete(newStepCount, newRightTurnCount)) {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
-      }, 1000)
+      }, 800)
       return
     }
 
     // 🚧 No boundary restrictions in Level 2 - seahorse can move freely
 
     setTimeout(() => {
-      executeNextCommand(commands, index + 1, newPosition, newStepCount, newRightTurnCount)
+      executeNextCommand(commands, index + 1, newPosition, newStepCount, newRightTurnCount, coinSoundPlayed)
     }, 1200)
   }
 
@@ -177,16 +185,29 @@ export default function Level2() {
     window.location.href = "/game/level3" // 🔗 Navigate to Level 3
   }
 
+  const handleTakeQuiz = () => {
+    window.location.href = "/game/Level2/quiz" // 🔗 Navigate to Level 2 Quiz
+  }
+
   const handleReset = () => {
-    window.location.href = "/game/level1" // 🔗 Navigate back to Level 1
+    window.location.href = "/game/Level2" // 🔗 Navigate back to Level 2
   }
 
   const handleCommandsChange = (commands: CommandBlock[]) => {
-    const code = generatePythonCode(commands)
+    const code = generatePythonCode(commands, { level: 2 })
     setGeneratedCode(code)
     try {
       localStorage.setItem("ss_level2_generated_code", code)
     } catch (_) {}
+  }
+
+  // Small coin collection sound (file optional; fallback chime if missing)
+  const playCoinSound = () => {
+    try {
+      const audio = new Audio("/sounds/collect-ring-15982.mp3")
+      audio.volume = 0.5
+      audio.play().catch(() => {})
+    } catch {}
   }
 
   return (
@@ -194,8 +215,8 @@ export default function Level2() {
       {/* Main Content Area - Canvas and Code Display */}
       <div className="flex-1 flex gap-4 p-4">
         {/* 3D View */}
-        <div className="flex-1">
-          <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
+        <div className="flex-[1.2] min-w-[520px]">
+        <Canvas camera={{ fov: 55 }}>
             <ambientLight intensity={0.7} />
             <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
@@ -214,19 +235,14 @@ export default function Level2() {
         </div>
 
         {/* Code Display */}
-        <div className="w-96">
+        <div className="w-[380px]">
           <CodeDisplay code={generatedCode} />
         </div>
       </div>
 
       {/* Programming Bar */}
       <div className="bg-sky-200 p-4">
-        <ProgrammingBar 
-          onExecuteProgram={executeProgram} 
-          isExecuting={isExecuting} 
-          onRefresh={handleRefresh}
-          onCommandsChange={handleCommandsChange}
-        />
+        <ProgrammingBar onExecuteProgram={executeProgram} isExecuting={isExecuting} onRefresh={handleRefresh} onCommandsChange={handleCommandsChange} />
       </div>
 
       {/* Error Message */}
@@ -248,26 +264,21 @@ export default function Level2() {
             </div>
 
             <h2 className="text-2xl font-extrabold text-gray-800 mb-2">WELL DONE!</h2>
-            <p className="text-gray-600 mb-6">You used <b>9 commands</b>. Try using <b>6</b> or fewer for 3 stars!</p>
+            <p className="text-gray-600 mb-6">You have completed the level successfully.</p>
 
             <div className="flex justify-center gap-3">
               <button
-                onClick={handleReplay}
+                onClick={handleReset}
                 className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
               >
                 ↻ Replay
               </button>
+              
               <button
-                onClick={handleReset}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
-              >
-                ⟳ Reset
-              </button>
-              <button
-                onClick={handleNextLevel}
+                onClick={handleTakeQuiz}
                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
               >
-                ➜ Next
+                ➜ Take Quiz
               </button>
             </div>
 
