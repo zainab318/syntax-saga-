@@ -32,9 +32,9 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      await firebaseRegister(email, password)
-      console.log("User registered")
-      router.push("/game/level1")
+      // Demo mode - skip authentication
+      console.log("Demo registration successful")
+      router.push("/levels")
     } catch (err: any) {
       setError(err?.message ?? "Registration failed")
       console.error("Register error", err)

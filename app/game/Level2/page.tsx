@@ -12,12 +12,11 @@ import { generatePythonCode } from "@/lib/codeGenerator"
 function CameraController() {
   const { camera } = useThree()
   useEffect(() => {
-    // Pull the camera back and shift focus slightly left so the scene stays visible
-    camera.position.set(28, 18, 24)
-    camera.lookAt(-4, 2, -4)
-    // Wider field of view to keep more of the scene in frame
-    // @ts-ignore - three.js camera has fov on perspective cameras
-    ;(camera as any).fov = 55
+    // Position camera far away with fixed view to prevent zooming (same as Level 1)
+    camera.position.set(26, 17, 22)
+    camera.lookAt(-2, 2, -2)
+    // @ts-ignore
+    ;(camera as any).fov = 55 // Same FOV as Level 1
     camera.updateProjectionMatrix()
   }, [camera])
   return null
@@ -62,7 +61,7 @@ export default function Level2() {
   const [generatedCode, setGeneratedCode] = useState<string>("")
   const [seahorsePosition, setSeahorsePosition] = useState<SeahorsePosition>({
     x: -3.5,
-    z: -6,
+    z: -3,
     rotation: 0,
   })
 
@@ -70,7 +69,7 @@ export default function Level2() {
   const REQUIRED_FORWARD_STEPS = 3 
   const REQUIRED_RIGHT_TURNS = 2 
   const COIN_POSITION = { x: 10, z: -6 }  
-  const COLLECTION_DISTANCE = 8.0
+  const COLLECTION_DISTANCE = 2 
 
   const isWithinBounds = (x: number, z: number) =>
     x >= BOUNDARY.minX && x <= BOUNDARY.maxX && z >= BOUNDARY.minZ && z <= BOUNDARY.maxZ
@@ -80,9 +79,10 @@ export default function Level2() {
     return distance < COLLECTION_DISTANCE
   }
 
-  const isLevelComplete = (currentForwardSteps: number, currentRightTurns: number): boolean => {
-    return currentForwardSteps >= REQUIRED_FORWARD_STEPS && currentRightTurns >= REQUIRED_RIGHT_TURNS
+  const isLevelComplete = (forwardSteps: number, rightTurns: number): boolean => {
+    return forwardSteps === 4 && rightTurns === 1
   }
+  
 
   const shouldCheckBoundaries = (currentForwardSteps: number, currentRightTurns: number): boolean => {
     return currentForwardSteps >= REQUIRED_FORWARD_STEPS && currentRightTurns >= REQUIRED_RIGHT_TURNS
@@ -98,7 +98,7 @@ export default function Level2() {
     executeNextCommand(commands, 0, { ...seahorsePosition })
   }
 
-  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition, currentStepCount: number = 0, currentRightTurnCount: number = 0, hasPlayedCoinSound: boolean = false) => {
+  const executeNextCommand = (commands: CommandBlock[], index: number, currentPos: SeahorsePosition, currentStepCount: number = 0, currentRightTurnCount: number = 0) => {
     if (index >= commands.length) {
       setIsExecuting(false)
       return
@@ -108,27 +108,33 @@ export default function Level2() {
     const newPosition = { ...currentPos }
     let newStepCount = currentStepCount
     let newRightTurnCount = currentRightTurnCount
-    let coinSoundPlayed = hasPlayedCoinSound
 
     switch (command.type) {
-      case "forward":
-        newPosition.x += Math.cos(newPosition.rotation) * 4.5
-        newPosition.z += Math.sin(newPosition.rotation) * 4.5
-        newStepCount += 1 // Count forward steps
-        setForwardSteps(newStepCount) // Update state
-        break
-      case "backward":
-        newPosition.x -= Math.cos(newPosition.rotation) * 4.5
-        newPosition.z -= Math.sin(newPosition.rotation) * 4.5
-        break
-      case "turnLeft":
-        newPosition.rotation += Math.PI / 2
-        break
-      case "turnRight":
-        newPosition.rotation -= Math.PI / 2
-        newRightTurnCount += 1 // Count right turns
-        setRightTurns(newRightTurnCount) // Update state
-        break
+     // inside switch
+case "forward": {
+  const step = 4.5
+  newPosition.x += Math.cos(newPosition.rotation) * step
+  newPosition.z -= Math.sin(newPosition.rotation) * step   // <-- note the minus
+  newStepCount += 1
+  setForwardSteps(newStepCount)
+  break
+}
+case "backward": {
+  const step = 4.5
+  newPosition.x -= Math.cos(newPosition.rotation) * step
+  newPosition.z += Math.sin(newPosition.rotation) * step   // <-- inverted
+  break
+}
+
+        case "turnLeft":
+          newPosition.rotation += Math.PI / 2 // counterclockwise
+          break
+        case "turnRight":
+          newPosition.rotation -= Math.PI / 2 // clockwise
+          newRightTurnCount += 1
+          setRightTurns(newRightTurnCount)
+          break
+        
       case "turnAround":
         newPosition.rotation += Math.PI
         break
@@ -141,26 +147,24 @@ export default function Level2() {
 
     setSeahorsePosition(newPosition)
 
-    // 🪙 Check if coin is collected; play sound immediately upon touch (once)
-    if (!coinSoundPlayed && checkCoinCollection(newPosition.x, newPosition.z)) {
+    // 🪙 Check if coin is collected
+    if (!coinCollected && checkCoinCollection(newPosition.x, newPosition.z)) {
       setCoinCollected(true)
-      coinSoundPlayed = true
-      try { playCoinSound() } catch {}
     }
 
-    // 🏁 Check for level completion -> show modal with actions (Replay or Take Quiz)
+    // 🏁 Check for level completion
     if (isLevelComplete(newStepCount, newRightTurnCount)) {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
-      }, 800)
+      }, 1000)
       return
     }
 
     // 🚧 No boundary restrictions in Level 2 - seahorse can move freely
 
     setTimeout(() => {
-      executeNextCommand(commands, index + 1, newPosition, newStepCount, newRightTurnCount, coinSoundPlayed)
+      executeNextCommand(commands, index + 1, newPosition, newStepCount, newRightTurnCount)
     }, 1200)
   }
 
@@ -185,12 +189,12 @@ export default function Level2() {
     window.location.href = "/game/level3" // 🔗 Navigate to Level 3
   }
 
-  const handleTakeQuiz = () => {
-    window.location.href = "/game/Level2/quiz" // 🔗 Navigate to Level 2 Quiz
-  }
-
   const handleReset = () => {
     window.location.href = "/game/Level2" // 🔗 Navigate back to Level 2
+  }
+
+  const handleTakeQuiz = () => {
+    window.location.href = "/game/Level2/quiz" // 🔗 Navigate to Level 2 Quiz
   }
 
   const handleCommandsChange = (commands: CommandBlock[]) => {
@@ -201,22 +205,13 @@ export default function Level2() {
     } catch (_) {}
   }
 
-  // Small coin collection sound (file optional; fallback chime if missing)
-  const playCoinSound = () => {
-    try {
-      const audio = new Audio("/sounds/collect-ring-15982.mp3")
-      audio.volume = 0.5
-      audio.play().catch(() => {})
-    } catch {}
-  }
-
   return (
     <div className="w-screen h-screen bg-sky-200 relative flex flex-col">
       {/* Main Content Area - Canvas and Code Display */}
       <div className="flex-1 flex gap-4 p-4">
-        {/* 3D View */}
-        <div className="flex-[1.2] min-w-[520px]">
-        <Canvas camera={{ fov: 55 }}>
+        {/* Left Side - 3D Canvas */}
+        <div className="flex-[1.5] min-w-[600px]">
+          <Canvas camera={{ fov: 55 }}>
             <ambientLight intensity={0.7} />
             <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
@@ -234,15 +229,20 @@ export default function Level2() {
           </Canvas>
         </div>
 
-        {/* Code Display */}
-        <div className="w-[380px]">
+        {/* Right Side - Code Display */}
+        <div className="w-[350px]">
           <CodeDisplay code={generatedCode} />
         </div>
       </div>
 
       {/* Programming Bar */}
       <div className="bg-sky-200 p-4">
-        <ProgrammingBar onExecuteProgram={executeProgram} isExecuting={isExecuting} onRefresh={handleRefresh} onCommandsChange={handleCommandsChange} />
+        <ProgrammingBar 
+          onExecuteProgram={executeProgram} 
+          isExecuting={isExecuting} 
+          onRefresh={handleRefresh}
+          onCommandsChange={handleCommandsChange}
+        />
       </div>
 
       {/* Error Message */}
@@ -268,7 +268,7 @@ export default function Level2() {
 
             <div className="flex justify-center gap-3">
               <button
-                onClick={handleReset}
+                onClick={handleReplay}
                 className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
               >
                 ↻ Replay

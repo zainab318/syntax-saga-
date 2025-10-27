@@ -197,7 +197,7 @@ export default function ProgrammingBar({ onExecuteProgram, isExecuting = false, 
   }, [isExecuting])
 
   return (
-    <div className="w-full">
+    <div className="w-[800px] ml-1">
       {/* Main Programming Area */}
       <div className="space-y-3">
         {/* Program Bar - matches screenshot style */}

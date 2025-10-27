@@ -27,9 +27,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const credential = await login(email, password) // uses lib/auth.ts -> signInWithEmailAndPassword(auth,...)
-      console.log("Signed in user", credential.user)
-      router.push("/game/level1")
+      // Demo mode - skip authentication
+      console.log("Demo login successful")
+      router.push("/levels")
     } catch (err: any) {
       setError(err?.message ?? "Failed to sign in")
       console.error("Login error", err)

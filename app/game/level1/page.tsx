@@ -61,6 +61,23 @@ export default function Level1() {
   const isLevelComplete = (currentSteps: number): boolean => {
     return currentSteps >= REQUIRED_FORWARD_STEPS
   }
+
+  const unlockLevel = (level: number) => {
+    try {
+      const savedProgress = localStorage.getItem("syntax_saga_progress")
+      const progress = savedProgress ? JSON.parse(savedProgress) : { level1: true, level2: false, level3: false }
+      
+      if (level === 2) {
+        progress.level2 = true
+      } else if (level === 3) {
+        progress.level3 = true
+      }
+      
+      localStorage.setItem("syntax_saga_progress", JSON.stringify(progress))
+    } catch (error) {
+      console.error("Error unlocking level:", error)
+    }
+  }
   
 
   const executeProgram = (commands: CommandBlock[]) => {
@@ -133,6 +150,8 @@ export default function Level1() {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
+        // Unlock Level 2
+        unlockLevel(2)
       }, 1000)
       return
     }
