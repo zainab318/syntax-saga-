@@ -8,14 +8,15 @@ import AnimatedSeahorse, { type SeahorsePosition } from "@/components/AnimatedSe
 import CodeDisplay from "@/components/CodeDisplay"
 import { generatePythonCode } from "@/lib/codeGenerator"
 
-// 🔒 Fixed Camera Controller
+// 🔒 Fixed Camera Controller - Optimized for closer view
 function CameraController() {
   const { camera } = useThree()
   useEffect(() => {
-    camera.position.set(26, 17, 22)
-    camera.lookAt(-2, 2, -2)
+    // Closer camera position for better detail view
+    camera.position.set(-30, 50, 50)
+    camera.lookAt(60, -50, -80)
     // @ts-ignore
-    ;(camera as any).fov = 55
+    ;(camera as any).fov = 10
     camera.updateProjectionMatrix()
   }, [camera])
   return null
@@ -60,23 +61,6 @@ export default function Level1() {
  
   const isLevelComplete = (currentSteps: number): boolean => {
     return currentSteps >= REQUIRED_FORWARD_STEPS
-  }
-
-  const unlockLevel = (level: number) => {
-    try {
-      const savedProgress = localStorage.getItem("syntax_saga_progress")
-      const progress = savedProgress ? JSON.parse(savedProgress) : { level1: true, level2: false, level3: false }
-      
-      if (level === 2) {
-        progress.level2 = true
-      } else if (level === 3) {
-        progress.level3 = true
-      }
-      
-      localStorage.setItem("syntax_saga_progress", JSON.stringify(progress))
-    } catch (error) {
-      console.error("Error unlocking level:", error)
-    }
   }
   
 
@@ -150,8 +134,6 @@ export default function Level1() {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
-        // Unlock Level 2
-        unlockLevel(2)
       }, 1000)
       return
     }
@@ -175,7 +157,7 @@ export default function Level1() {
   }
 
   const handleNextLevel = () => {
-    window.location.href = "/game/Level2" // 🔗 Navigate to Level 2
+    window.location.href = "/game/level2" // 🔗 Navigate to Level 2
   }
 
   const handleTakeQuiz = () => {
@@ -200,7 +182,7 @@ export default function Level1() {
       <div className="flex-1 flex gap-4 p-4">
         {/* Left Side - 3D Canvas */}
         <div className="flex-[1.2] min-w-[520px]">
-        <Canvas camera={{ fov: 55 }}>
+        <Canvas camera={{ fov: 25, position: [15, 8, 5] }}>
             <ambientLight intensity={0.7} />
             <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
