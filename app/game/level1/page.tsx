@@ -157,7 +157,7 @@ export default function Level1() {
   }
 
   const handleNextLevel = () => {
-    window.location.href = "/game/level2" // 🔗 Navigate to Level 2
+    window.location.href = "/game/Level2" // 🔗 Navigate to Level 2
   }
 
   const handleTakeQuiz = () => {
@@ -177,40 +177,44 @@ export default function Level1() {
   }
 
   return (
-    <div className="w-screen h-screen bg-sky-200 relative flex flex-col">
-      {/* Main Content Area - Canvas and Code Display */}
-      <div className="flex-1 flex gap-4 p-4">
-        {/* Left Side - 3D Canvas */}
-        <div className="flex-[1.2] min-w-[520px]">
-        <Canvas camera={{ fov: 25, position: [15, 8, 5] }}>
-            <ambientLight intensity={0.7} />
-            <directionalLight position={[10, 15, 10]} intensity={1.4} />
+<>
+<div className="flex w-screen h-screen overflow-hidden">
+  {/* LEFT 70% — Model and Programming Bar */}
+  <div className="w-[70%] h-full flex flex-col bg-sky-200 border-r border-gray-300">
+    {/* 3D Model */}
+    <div className="flex-1 p-4">
+      <Canvas camera={{ fov: 25, position: [15, 8, 5] }}>
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[10, 15, 10]} intensity={1.4} />
+        <Suspense fallback={null}>
+          <Sea />
+          <Base />
+          <AnimatedSeahorse
+            position={seahorsePosition}
+            isAnimating={isExecuting}
+            onAnimationComplete={() => {}}
+          />
+          <CameraController />
+        </Suspense>
+      </Canvas>
+    </div>
 
-            <Suspense fallback={null}>
-              <Sea />
-              <Base />
-              <AnimatedSeahorse position={seahorsePosition} isAnimating={isExecuting} onAnimationComplete={() => {}} />
-              <CameraController />
-            </Suspense>
-          </Canvas>
-        </div>
+    {/* Programming Bar */}
+    <div className="h-[40%] p-4 bg-sky-200 border-t border-gray-400 overflow-y-auto">
+      <ProgrammingBar
+        onExecuteProgram={executeProgram}
+        isExecuting={isExecuting}
+        onRefresh={handleRefresh}
+        onCommandsChange={handleCommandsChange}
+      />
+    </div>
+  </div>
 
-        {/* Right Side - Code Display */}
-        <div className="w-[380px]">
-          <CodeDisplay code={generatedCode} />
-        </div>
-      </div>
-
-      {/* Programming Bar */}
-      <div className="bg-sky-200 p-4">
-        <ProgrammingBar 
-          onExecuteProgram={executeProgram} 
-          isExecuting={isExecuting} 
-          onRefresh={handleRefresh}
-          onCommandsChange={handleCommandsChange}
-        />
-      </div>
-
+  {/* RIGHT 30% — Code Display */}
+  <div className="w-[30%] h-full bg-sky-200 p-4 overflow-auto">
+    <CodeDisplay code={generatedCode} />
+  </div>
+</div>
       {/* Error Popup */}
       {errorMessage && (
         <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-8 py-4 rounded-lg shadow-2xl text-xl font-bold animate-bounce z-50">
@@ -258,10 +262,7 @@ export default function Level1() {
     </div>
   </div>
 )}
-
-
-     
-    </div>
+  </>
   )
 }
 

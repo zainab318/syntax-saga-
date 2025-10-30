@@ -9,10 +9,18 @@ interface CodeDisplayProps {
 }
 
 export default function CodeDisplay({ code, className }: CodeDisplayProps) {
+  const lineCount = code ? code.split("\n").length : 0
+  // Dynamic font sizing based on length to keep content fitting the panel
+  // Tiers chosen for readability vs. density
+  let fontSize = 14
+  if (lineCount > 50) fontSize = 10
+  else if (lineCount > 35) fontSize = 12
+  else if (lineCount > 25) fontSize = 13
+  const lineHeight = fontSize <= 10 ? 1.25 : fontSize <= 12 ? 1.35 : 1.45
   return (
     <div
       className={cn(
-        "bg-gradient-to-b from-cyan-900 to-blue-950 rounded-lg shadow-2xl border-2 border-cyan-600 flex flex-col h-full",
+        "bg-gradient-to-b from-cyan-900 to-blue-950 rounded-lg shadow-2xl border-2 border-cyan-600 flex flex-col h-full min-h-56",
         className
       )}
     >
@@ -30,8 +38,11 @@ export default function CodeDisplay({ code, className }: CodeDisplayProps) {
       </div>
 
       {/* Code Content */}
-      <div className="flex-1 overflow-auto p-4">
-        <pre className="text-cyan-100 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+      <div className="flex-1 p-4 min-h-56">
+        <pre
+          className="text-cyan-100 font-mono whitespace-pre-wrap"
+          style={{ fontSize: `${fontSize}px`, lineHeight }}
+        >
           {code || (
             <span className="text-cyan-400 italic">
               # 🌊 Drag commands to generate code...
@@ -48,7 +59,7 @@ export default function CodeDisplay({ code, className }: CodeDisplayProps) {
             <span>🌊</span> Sea Theme Mode
           </span>
           <span className="text-cyan-300">
-            {code ? `${code.split("\n").length} lines` : "0 lines"}
+            {code ? `${lineCount} lines` : "0 lines"}
           </span>
         </div>
       </div>

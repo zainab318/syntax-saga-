@@ -46,6 +46,69 @@ export function generatePythonCode(commands: CommandBlock[], options: GenOptions
     return codeLines.join("\n")
   }
 
+  // Level 3: conditional flow with key and door logic
+  // Expected path: F, F, L, (collect key), R, F, F, R, then open/enter door if key collected
+  if (level === 3) {
+    codeLines.push(`# Level 3 logic with key/door conditions`)
+    codeLines.push(`key_collected = False`)
+    codeLines.push(`door_open = False`)
+    codeLines.push("")
+
+    let stage = 0 // 0: need 2 forwards, 1: need left, 2: need right, 3: need 2 forwards, 4: need final right
+    let forwardsInStage = 0
+
+    const p = (msg: string) => `print("${msg}")`
+
+    for (const command of commands) {
+      switch (command.type) {
+        case "forward":
+          codeLines.push(p("move forward"))
+          if (stage === 0 || stage === 3) {
+            forwardsInStage += 1
+            if (stage === 0 && forwardsInStage >= 2) { stage = 1; forwardsInStage = 0 }
+            if (stage === 3 && forwardsInStage >= 2) { stage = 4; forwardsInStage = 0 }
+          }
+          break
+        case "backward":
+          codeLines.push(p("move backward"))
+          break
+        case "turnLeft":
+          codeLines.push(p("turn left"))
+          if (stage === 1) {
+            // Collect key upon the first correct left after two forwards
+            codeLines.push(p("collect key"))
+            codeLines.push("key_collected = True")
+            stage = 2
+          }
+          break
+        case "turnRight":
+          codeLines.push(p("turn right"))
+          if (stage === 2) { stage = 3 }
+          else if (stage === 4) {
+            // Final right before door
+            codeLines.push("")
+            codeLines.push("if key_collected:")
+            codeLines.push("    print(\"open door\")")
+            codeLines.push("    door_open = True")
+            codeLines.push("    print(\"enter door\")")
+            codeLines.push("else:")
+            codeLines.push("    print(\"door remains closed - find the key first\")")
+          }
+          break
+        case "turnAround":
+          codeLines.push(p("turn around"))
+          break
+        case "wait":
+          codeLines.push(p("wait"))
+          break
+        default:
+          codeLines.push(`# Unknown command: ${command.type}`)
+      }
+    }
+
+    return codeLines.join("\n")
+  }
+
   // Level 1: simple prints only (no loops)
   if (level === 1) {
     for (const command of commands) {

@@ -1,17 +1,26 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
-import { Canvas, useThree } from "@react-three/fiber"
+import { useRef, useState, Suspense, useEffect} from "react"
+import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import ProgrammingBar, { type CommandBlock } from "@/components/ProgrammingBar"
 import AnimatedSeahorse, { type SeahorsePosition } from "@/components/AnimatedSeahorse"
+import CodeDisplay from "@/components/CodeDisplay"
+import { generatePythonCode } from "@/lib/codeGenerator"
+
+// Editable seahorse starting pose (numericals)
+export const SEAHORSE_START_X = 1
+export const SEAHORSE_START_Z = -1
+export const SEAHORSE_START_ROTATION = 0
 
 // 🔒 Fixed Camera Controller
 function CameraController() {
   const { camera } = useThree()
   useEffect(() => {
-    camera.position.set(25, 15, 15)
-    camera.lookAt(4, 2, 0)
+    camera.position.set(-30, 60, 70)
+    camera.lookAt(60, -50, -80)
+    // @ts-ignore
+    ;(camera as any).fov = 10
     camera.updateProjectionMatrix()
   }, [camera])
   return null
@@ -28,7 +37,7 @@ function Sea() {
 // 🏝 Level 3 base model
 function Base() {
   const { scene } = useGLTF("/Level3_base.glb")
-  scene.position.set(0, -1, 0)
+  scene.position.set(0, 1, 0)
   scene.scale.set(1.5, 1.5, 1.5)
   return <primitive object={scene} />
 }
@@ -39,31 +48,35 @@ function Key({ visible }: { visible: boolean }) {
   
   if (!visible) return null
   
-  scene.position.set(7, 2, -8.5) // 2 forward, 1 left from start
-  scene.scale.set(1.2, 1.2, 1.2)
+  scene.position.set(13, 0.2, 9) // 2 forward, 1 left from start, moved down a bit
+  scene.scale.set(1.8, 1.8, 1.8) // Increased size
   scene.rotation.set(0, Math.PI /4, 0) // Rotate 45 degrees to show front face
   return <primitive object={scene} />
 }
+function Door({ isOpen }: { isOpen: boolean }) {
+  const { scene } = useGLTF("/Door model2.glb")
+  const doorRef = useRef<any>()
+  const [angle, setAngle] = useState(0)
 
-// 🚪 Door model (removed for now)
-// function Door({ isOpen }: { isOpen: boolean }) {
-//   const { scene } = useGLTF("/Door model2.glb")
-//   
-//   scene.position.set(6.5, 2, 0.5) // From key: 1 back, 1 forward, 1 right
-//   scene.scale.set(0.5, 0.5, 0.5)
-//   
-//   // Make door transparent/invisible when open
-//   if (isOpen) {
-//     scene.traverse((child: any) => {
-//       if (child.isMesh) {
-//         child.material.transparent = true
-//         child.material.opacity = 0
-//       }
-//     })
-//   }
-//   
-//   return <primitive object={scene} />
-// }
+  // Position and scale
+  scene.position.set(15, 9, 17)
+  scene.scale.set(0.8,0.8,0.8)
+  scene.rotation.set(0, Math.PI / 2, 0) // front face toward camera
+
+  // Door opening animation
+  useFrame(() => {
+    if (isOpen && angle < Math.PI / 2) {
+      setAngle((prev) => Math.min(prev + 0.05, Math.PI / 2))
+    }
+    if (doorRef.current) {
+      doorRef.current.rotation.y = Math.PI / 2 - angle
+    }
+  })
+
+  return <primitive ref={doorRef} object={scene} />
+}
+
+
 
 // 🎮 Level 3 main scene
 export default function Level3() {
@@ -73,30 +86,18 @@ export default function Level3() {
   const [hasKey, setHasKey] = useState(false)
   const [doorOpen, setDoorOpen] = useState(false)
   const [keyCollected, setKeyCollected] = useState(false)
+  const [showKeyToast, setShowKeyToast] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string>("")
   const [seahorsePosition, setSeahorsePosition] = useState<SeahorsePosition>({
-    x: -2,
-    z: -4,
-    rotation: 0,
+    x: SEAHORSE_START_X,
+    z: SEAHORSE_START_Z,
+    rotation: SEAHORSE_START_ROTATION, // Start facing forward (positive X direction)
   })
 
-  const BOUNDARY = { minX: -8, maxX: 8, minZ: -10, maxZ: 8 }
-  
-  // Position calculations based on your description:
-  // Start: (-2, -4)
-  // 2 forward: (-2 + 9, -4) = (7, -4)
-  // 1 left: (7, -4 - 4.5) = (7, -8.5) - KEY POSITION
-  // From key, 1 back: (7 - 4.5, -8.5) = (2.5, -8.5)
-  // 1 forward: (2.5 + 4.5, -8.5) = (7, -8.5)
-  // 1 right: (7, -8.5 + 4.5) = (7, -4) - DOOR POSITION
-  // After door, 1 right: (7, -4 + 4.5) = (7, 0.5) - GOAL POSITION
-  
   const KEY_POSITION = { x: 7, z: -8.5 }
   const DOOR_POSITION = { x: 7, z: -4 }
   const GOAL_POSITION = { x: 7, z: 0.5 }
   const COLLECTION_DISTANCE = 2.5
-
-  const isWithinBounds = (x: number, z: number) =>
-    x >= BOUNDARY.minX && x <= BOUNDARY.maxX && z >= BOUNDARY.minZ && z <= BOUNDARY.maxZ
 
   const checkKeyCollection = (x: number, z: number): boolean => {
     const distance = Math.sqrt(Math.pow(x - KEY_POSITION.x, 2) + Math.pow(z - KEY_POSITION.z, 2))
@@ -104,7 +105,7 @@ export default function Level3() {
   }
 
   const checkDoorReached = (x: number, z: number): boolean => {
-    const distance = Math.sqrt(Math.pow(x - DOOR_POSITION.x, 2) + Math.pow(z - DOOR_POSITION.z, 2))
+    const distance = Math.sqrt(Math.pow(x - DOOR_POSITION.x, 0.5) + Math.pow(z - DOOR_POSITION.z, 2))
     return distance < COLLECTION_DISTANCE
   }
 
@@ -120,10 +121,18 @@ export default function Level3() {
     setHasKey(false)
     setDoorOpen(false)
     setKeyCollected(false)
-    executeNextCommand(commands, 0, { ...seahorsePosition })
+    // Stage machine for completion: F,F,L,R,F,F,R
+    // stage 0: need 2 forwards; stage 1: need left; stage 2: need right; stage 3: need 2 forwards; stage 4: need final right
+    executeNextCommand(commands, 0, { ...seahorsePosition }, 0, 0)
   }
 
-  const executeNextCommand = (commands: CommandBlock[], index: number, pos: SeahorsePosition) => {
+  const executeNextCommand = (
+    commands: CommandBlock[],
+    index: number,
+    pos: SeahorsePosition,
+    stage: number = 0,
+    forwardCount: number = 0,
+  ) => {
     if (index >= commands.length) {
       setIsExecuting(false)
       return
@@ -141,11 +150,17 @@ export default function Level3() {
         newPos.x -= Math.cos(newPos.rotation) * 4.5
         newPos.z -= Math.sin(newPos.rotation) * 4.5
         break
-      case "turnLeft":
-        newPos.rotation += Math.PI / 2
-        break
+        case "turnLeft":
+  newPos.x += Math.cos(newPos.rotation - Math.PI / 2) * 4.5
+  newPos.z += Math.sin(newPos.rotation - Math.PI / 2) * 4.5
+  break
+
+        
       case "turnRight":
+        // Turn right (clockwise) and move in the new direction
         newPos.rotation -= Math.PI / 2
+        newPos.x += Math.cos(newPos.rotation) * 4.5
+        newPos.z += Math.sin(newPos.rotation) * 4.5
         break
       case "turnAround":
         newPos.rotation += Math.PI
@@ -154,24 +169,51 @@ export default function Level3() {
         break
     }
 
-    if (!isWithinBounds(newPos.x, newPos.z)) {
-      setErrorMessage("⚠️ The seahorse can't swim off the platform!")
-      setIsExecuting(false)
-      setTimeout(() => setErrorMessage(null), 3000)
-      return
-    }
+    
 
     newPos.rotation = Math.atan2(Math.sin(newPos.rotation), Math.cos(newPos.rotation))
     setSeahorsePosition(newPos)
 
-    // 🔑 Check if key is collected
-    if (!keyCollected && checkKeyCollection(newPos.x, newPos.z)) {
-      setKeyCollected(true)
-      setHasKey(true)
+    // Completion sequence tracking: F,F,L,R,F,F,R
+    let nextStage = stage
+    let nextForwards = forwardCount
+    if (stage === 0) {
+      if (cmd.type === "forward") {
+        nextForwards += 1
+        if (nextForwards >= 2) { nextStage = 1; nextForwards = 0 }
+      } else if (cmd.type !== "wait") { nextStage = 0; nextForwards = 0 }
+    } else if (stage === 1) {
+      if (cmd.type === "turnLeft") { nextStage = 2 } else if (cmd.type !== "wait") { nextStage = 0; nextForwards = 0 }
+    } else if (stage === 2) {
+      if (cmd.type === "turnRight") { nextStage = 3 } else if (cmd.type !== "wait") { nextStage = 0; nextForwards = 0 }
+    } else if (stage === 3) {
+      if (cmd.type === "forward") {
+        nextForwards += 1
+        if (nextForwards >= 2) { nextStage = 4; nextForwards = 0 }
+      } else if (cmd.type !== "wait") { nextStage = 0; nextForwards = 0 }
+    } else if (stage === 4) {
+      if (cmd.type === "turnRight") {
+        setTimeout(() => {
+          setLevelCompleted(true)
+          setIsExecuting(false)
+          // Navigate to Level 3 quiz
+          window.location.href = "/game/level3/quiz"
+        }, 600)
+        return
+      } else if (cmd.type !== "wait") { nextStage = 0; nextForwards = 0 }
     }
 
-    // 🏁 Check for level completion (just need to collect the key)
-    if (hasKey) {
+    // 🔑 Check if key is collected
+    if (!keyCollected && checkKeyCollection(newPos.x, newPos.z)) {
+        setKeyCollected(true)
+        setHasKey(true)
+        setDoorOpen(true) // ✅ Open the door when key is collected
+        setShowKeyToast(true)
+        setTimeout(() => setShowKeyToast(false), 1500)
+    }
+
+    // 🏁 Check for level completion - need to reach goal position after collecting key
+    if (hasKey && checkGoalReached(newPos.x, newPos.z)) {
       setTimeout(() => {
         setLevelCompleted(true)
         setIsExecuting(false)
@@ -179,11 +221,11 @@ export default function Level3() {
       return
     }
 
-    setTimeout(() => executeNextCommand(commands, index + 1, newPos), 1200)
+    setTimeout(() => executeNextCommand(commands, index + 1, newPos, nextStage, nextForwards), 1200)
   }
 
   const handleRefresh = () => {
-    setSeahorsePosition({ x: -2, z: -4, rotation: 0 })
+    setSeahorsePosition({ x: SEAHORSE_START_X, z: SEAHORSE_START_Z, rotation: SEAHORSE_START_ROTATION })
     setErrorMessage(null)
     setLevelCompleted(false)
     setHasKey(false)
@@ -193,45 +235,74 @@ export default function Level3() {
 
   const handleReplay = () => {
     setLevelCompleted(false)
-    setSeahorsePosition({ x: -2, z: -4, rotation: 0 })
+    setSeahorsePosition({ x: SEAHORSE_START_X, z: SEAHORSE_START_Z, rotation: SEAHORSE_START_ROTATION })
     setHasKey(false)
     setDoorOpen(false)
     setKeyCollected(false)
   }
 
   const handleNextLevel = () => {
-    window.location.href = "/game/level1" // 🔗 Go back to Level 1 (or create Level 4)
+    window.location.href = "/game/level4" // 🔗 Go back to Level 1 (or create Level 4)
   }
 
   const handleReset = () => {
-    window.location.href = "/game/level1" // 🔗 Go back to Level 1
+    window.location.href = "/game/level3" // 🔗 Go back to Level 1
+  }
+
+  // 🔗 Real-time code generation (same as Levels 1 and 2)
+  const handleCommandsChange = (commands: CommandBlock[]) => {
+    const code = generatePythonCode(commands, { level: 3 })
+    setGeneratedCode(code)
+    try {
+      localStorage.setItem("ss_level3_generated_code", code)
+    } catch (_) {}
   }
 
   return (
-    <div className="w-screen h-screen bg-sky-200 relative flex flex-col">
-      {/* 3D View */}
-      <div className="flex-1">
-        <Canvas camera={{ position: [12, 10, 12], fov: 50 }}>
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[10, 15, 10]} intensity={1.4} />
+    <div className="flex w-screen h-screen overflow-hidden">
+      {/* LEFT 70% — Model and Programming Bar */}
+      <div className="w-[70%] h-full flex flex-col bg-sky-200 border-r border-gray-300">
+        {/* 3D View */}
+        <div className="flex-1">
+          <Canvas camera={{ fov: 25, position: [15, 8, 5] }}>
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 15, 10]} intensity={1.4} />
 
-          <Suspense fallback={null}>
-            <Sea />
-            <Base />
-            <Key visible={!keyCollected} />
-            <AnimatedSeahorse
-              position={seahorsePosition}
-              isAnimating={isExecuting}
-              onAnimationComplete={() => {}}
-            />
-            <CameraController />
-          </Suspense>
-        </Canvas>
+            <Suspense fallback={null}>
+              <Sea />
+              <Base />
+              <Key visible={!keyCollected} />
+              <Door isOpen={doorOpen} />
+              <AnimatedSeahorse
+                position={seahorsePosition}
+                isAnimating={isExecuting}
+                onAnimationComplete={() => {}}
+              />
+              <CameraController />
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Programming Bar */}
+        <div className="h-[40%] p-4 bg-sky-200 border-t border-gray-400 overflow-y-auto">
+          <ProgrammingBar
+            onExecuteProgram={executeProgram}
+            isExecuting={isExecuting}
+            onRefresh={handleRefresh}
+            onCommandsChange={handleCommandsChange}
+          />
+        </div>
       </div>
 
-      {/* Programming Bar */}
-      <div className="bg-sky-200 p-4">
-        <ProgrammingBar onExecuteProgram={executeProgram} isExecuting={isExecuting} onRefresh={handleRefresh} />
+      {showKeyToast && (
+        <div className="fixed top-6 right-6 z-50 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
+          🔑 Key collected!
+        </div>
+      )}
+
+      {/* RIGHT 30% — Code Display */}
+      <div className="w-[30%] h-full bg-sky-200 p-4 overflow-auto">
+        <CodeDisplay code={generatedCode} />
       </div>
 
       {/* Status Indicator */}
@@ -273,12 +344,7 @@ export default function Level3() {
               >
                 ↻ Replay
               </button>
-              <button
-                onClick={handleReset}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
-              >
-                ⟳ Reset
-              </button>
+              
               <button
                 onClick={handleNextLevel}
                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
