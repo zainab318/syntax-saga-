@@ -47,13 +47,15 @@ class CommandPalette:
     """
     Command palette for selecting available commands.
     Provides a structured interface for users to select commands.
+    Supports level-based command filtering.
     """
     
-    def __init__(self):
+    def __init__(self, current_level: int = 1):
         self.commands = self._initialize_commands()
+        self.current_level = current_level
     
     def _initialize_commands(self) -> Dict[str, Dict[str, Any]]:
-        """Initialize available commands with their metadata."""
+        """Initialize available commands with their metadata and level availability."""
         return {
             "move": {
                 "type": BlockType.MOVE_FORWARD.value,
@@ -61,7 +63,8 @@ class CommandPalette:
                 "icon": "→",
                 "category": "movement",
                 "default_params": {"distance": 1},
-                "description": "Move the character forward by specified distance"
+                "description": "Move the character forward by specified distance",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "move_back": {
                 "type": BlockType.MOVE_BACKWARD.value,
@@ -69,7 +72,8 @@ class CommandPalette:
                 "icon": "←",
                 "category": "movement",
                 "default_params": {"distance": 1},
-                "description": "Move the character backward by specified distance"
+                "description": "Move the character backward by specified distance",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "turn_left": {
                 "type": BlockType.TURN_LEFT.value,
@@ -77,7 +81,8 @@ class CommandPalette:
                 "icon": "↰",
                 "category": "movement",
                 "default_params": {"degrees": 90},
-                "description": "Turn the character left by specified degrees"
+                "description": "Turn the character left by specified degrees",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "turn_right": {
                 "type": BlockType.TURN_RIGHT.value,
@@ -85,7 +90,8 @@ class CommandPalette:
                 "icon": "↱",
                 "category": "movement",
                 "default_params": {"degrees": 90},
-                "description": "Turn the character right by specified degrees"
+                "description": "Turn the character right by specified degrees",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "jump": {
                 "type": BlockType.JUMP.value,
@@ -93,7 +99,8 @@ class CommandPalette:
                 "icon": "⤴",
                 "category": "movement",
                 "default_params": {"height": 1},
-                "description": "Make the character jump to specified height"
+                "description": "Make the character jump to specified height",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "pick_object": {
                 "type": BlockType.PICK_OBJECT.value,
@@ -101,7 +108,8 @@ class CommandPalette:
                 "icon": "✋",
                 "category": "action",
                 "default_params": {"object_name": "item"},
-                "description": "Pick up an object in the environment"
+                "description": "Pick up an object in the environment",
+                "available_levels": [1, 2, 3, 4]  # Available in all levels
             },
             "loop": {
                 "type": BlockType.LOOP.value,
@@ -109,7 +117,8 @@ class CommandPalette:
                 "icon": "⟳",
                 "category": "control",
                 "default_params": {"iterations": 3, "body": []},
-                "description": "Repeat a sequence of commands multiple times"
+                "description": "Repeat a sequence of commands multiple times",
+                "available_levels": [4]  # Level 4: Loops
             },
             "conditional": {
                 "type": BlockType.CONDITIONAL.value,
@@ -117,7 +126,8 @@ class CommandPalette:
                 "icon": "?",
                 "category": "control",
                 "default_params": {"condition": "True", "if_body": [], "else_body": []},
-                "description": "Execute commands based on a condition"
+                "description": "Execute commands based on a condition",
+                "available_levels": [3, 4]  # Level 3: If statement, also available in Level 4
             },
             "print": {
                 "type": BlockType.PRINT.value,
@@ -125,7 +135,8 @@ class CommandPalette:
                 "icon": "💬",
                 "category": "utility",
                 "default_params": {"message": "Hello"},
-                "description": "Print a message to the console"
+                "description": "Print a message to the console",
+                "available_levels": [1, 2, 3, 4]  # Level 1: print statement, available in all levels
             },
             "wait": {
                 "type": BlockType.WAIT.value,
@@ -133,14 +144,55 @@ class CommandPalette:
                 "icon": "⏱",
                 "category": "utility",
                 "default_params": {"seconds": 1},
-                "description": "Pause execution for specified seconds"
+                "description": "Pause execution for specified seconds",
+                "available_levels": [2, 3, 4]  # Available from Level 2 onwards
             }
         }
     
-    def get_commands_by_category(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Get commands organized by category."""
+    def set_level(self, level: int) -> None:
+        """
+        Set the current level for command filtering.
+        
+        Args:
+            level: The level number (1, 2, 3, or 4)
+        """
+        self.current_level = level
+    
+    def get_level(self) -> int:
+        """Get the current level."""
+        return self.current_level
+    
+    def is_command_available(self, command_id: str) -> bool:
+        """
+        Check if a command is available at the current level.
+        
+        Args:
+            command_id: ID of the command to check
+            
+        Returns:
+            True if command is available at current level, False otherwise
+        """
+        cmd = self.commands.get(command_id)
+        if not cmd:
+            return False
+        return self.current_level in cmd.get("available_levels", [])
+    
+    def get_commands_by_category(self, filter_by_level: bool = True) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get commands organized by category, optionally filtered by current level.
+        
+        Args:
+            filter_by_level: If True, only return commands available at current level
+            
+        Returns:
+            Dictionary of commands grouped by category
+        """
         categories = {}
         for cmd_id, cmd_data in self.commands.items():
+            # Filter by level if requested
+            if filter_by_level and self.current_level not in cmd_data.get("available_levels", []):
+                continue
+                
             category = cmd_data["category"]
             if category not in categories:
                 categories[category] = []
@@ -154,9 +206,23 @@ class CommandPalette:
         """Get a specific command by ID."""
         return self.commands.get(command_id)
     
-    def get_all_commands(self) -> List[Dict[str, Any]]:
-        """Get all available commands."""
-        return [{"id": cmd_id, **cmd_data} for cmd_id, cmd_data in self.commands.items()]
+    def get_all_commands(self, filter_by_level: bool = True) -> List[Dict[str, Any]]:
+        """
+        Get all available commands, optionally filtered by current level.
+        
+        Args:
+            filter_by_level: If True, only return commands available at current level
+            
+        Returns:
+            List of all commands (filtered or unfiltered)
+        """
+        all_commands = []
+        for cmd_id, cmd_data in self.commands.items():
+            # Filter by level if requested
+            if filter_by_level and self.current_level not in cmd_data.get("available_levels", []):
+                continue
+            all_commands.append({"id": cmd_id, **cmd_data})
+        return all_commands
 
 
 class VisualWorkflow:
@@ -766,17 +832,53 @@ class GameplaySession:
     """
     Main gameplay session manager that integrates command palette,
     visual workflow, and code generation.
+    Supports level-based command filtering.
     """
     
-    def __init__(self):
-        self.palette = CommandPalette()
+    def __init__(self, current_level: int = 1):
+        self.current_level = current_level
+        self.palette = CommandPalette(current_level=current_level)
         self.workflow = VisualWorkflow()
         self.generator = CodeGenerator()
         self.code_cache = ""
         
+    def set_level(self, level: int) -> None:
+        """
+        Set the current level for the gameplay session.
+        
+        Args:
+            level: The level number (1, 2, 3, or 4)
+        """
+        self.current_level = level
+        self.palette.set_level(level)
+    
+    def get_level(self) -> int:
+        """Get the current level."""
+        return self.current_level
+    
+    def get_available_commands_for_level(self, level: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get all commands available for a specific level.
+        
+        Args:
+            level: The level to get commands for (defaults to current level)
+            
+        Returns:
+            List of available commands for the level
+        """
+        if level is not None and level != self.current_level:
+            # Temporarily switch to the requested level
+            old_level = self.current_level
+            self.set_level(level)
+            commands = self.palette.get_all_commands(filter_by_level=True)
+            self.set_level(old_level)
+            return commands
+        return self.palette.get_all_commands(filter_by_level=True)
+    
     def add_command_from_palette(self, command_id: str, custom_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Add a command from the palette to the workflow and generate code.
+        Checks if command is available at current level.
         
         Args:
             command_id: ID of the command from the palette
@@ -785,10 +887,17 @@ class GameplaySession:
         Returns:
             Dictionary with command info and generated code
         """
+        # Check if command is available at current level
+        if not self.palette.is_command_available(command_id):
+            return {
+                "error": f"Command '{command_id}' is not available at Level {self.current_level}",
+                "success": False
+            }
+        
         # Get command from palette
         cmd_info = self.palette.get_command(command_id)
         if not cmd_info:
-            return {"error": f"Command '{command_id}' not found in palette"}
+            return {"error": f"Command '{command_id}' not found in palette", "success": False}
         
         # Create block with parameters
         params = cmd_info["default_params"].copy()
@@ -860,9 +969,17 @@ class GameplaySession:
         """Get visual representation of the current workflow."""
         return self.workflow.get_visual_representation()
     
-    def get_palette_commands_by_category(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Get all available commands organized by category."""
-        return self.palette.get_commands_by_category()
+    def get_palette_commands_by_category(self, filter_by_level: bool = True) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get all available commands organized by category.
+        
+        Args:
+            filter_by_level: If True, only return commands available at current level
+            
+        Returns:
+            Dictionary of commands grouped by category
+        """
+        return self.palette.get_commands_by_category(filter_by_level=filter_by_level)
     
     def export_session(self) -> Dict[str, Any]:
         """
@@ -897,6 +1014,78 @@ class GameplaySession:
         
         # Update code display
         self.update_code_display()
+
+
+def demonstrate_level_based_commands():
+    """
+    Demonstration function showing level-based command filtering.
+    """
+    print("=" * 70)
+    print("DEMONSTRATION: Level-Based Command Filtering")
+    print("=" * 70)
+    
+    # Show commands available at each level
+    for level in [1, 2, 3, 4]:
+        print(f"\n{'=' * 70}")
+        print(f"LEVEL {level} - Available Commands:")
+        print('=' * 70)
+        
+        session = GameplaySession(current_level=level)
+        categories = session.get_palette_commands_by_category(filter_by_level=True)
+        
+        if not categories:
+            print("  No commands available at this level.")
+        else:
+            for category, commands in categories.items():
+                print(f"\n📁 {category.upper()}:")
+                for cmd in commands:
+                    print(f"  {cmd['icon']} {cmd['label']}: {cmd['description']}")
+        
+        # Show examples of trying to use level-specific commands
+        print(f"\n--- Testing Command Availability ---")
+        
+        if level == 1:
+            result = session.add_command_from_palette("print", {"message": "Level 1 Print!"})
+            if result.get("success"):
+                print(f"✅ LEVEL 1: Can use 'print' statement")
+            
+            result = session.add_command_from_palette("conditional")
+            if not result.get("success"):
+                print(f"❌ LEVEL 1: Cannot use 'if' statement - {result.get('error')}")
+                
+            result = session.add_command_from_palette("loop")
+            if not result.get("success"):
+                print(f"❌ LEVEL 1: Cannot use 'loop' - {result.get('error')}")
+        
+        elif level == 3:
+            result = session.add_command_from_palette("conditional", {"condition": "x > 5", "if_body": []})
+            if result.get("success"):
+                print(f"✅ LEVEL 3: Can use 'if' statement")
+            
+            result = session.add_command_from_palette("print", {"message": "Level 3 Print!"})
+            if result.get("success"):
+                print(f"✅ LEVEL 3: Can use 'print' statement")
+                
+            result = session.add_command_from_palette("loop")
+            if not result.get("success"):
+                print(f"❌ LEVEL 3: Cannot use 'loop' - {result.get('error')}")
+        
+        elif level == 4:
+            result = session.add_command_from_palette("loop", {"iterations": 3, "body": []})
+            if result.get("success"):
+                print(f"✅ LEVEL 4: Can use 'loop'")
+            
+            result = session.add_command_from_palette("conditional", {"condition": "x > 5", "if_body": []})
+            if result.get("success"):
+                print(f"✅ LEVEL 4: Can use 'if' statement")
+            
+            result = session.add_command_from_palette("print", {"message": "Level 4 Print!"})
+            if result.get("success"):
+                print(f"✅ LEVEL 4: Can use 'print' statement")
+    
+    print("\n" + "=" * 70)
+    print("END OF LEVEL-BASED DEMONSTRATION")
+    print("=" * 70)
 
 
 def demonstrate_gameplay_features():
@@ -974,6 +1163,22 @@ def demonstrate_gameplay_features():
 
 
 if __name__ == "__main__":
-    # Run demonstration when module is executed directly
-    demonstrate_gameplay_features()
+    # Run demonstrations when module is executed directly
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--levels":
+        # Show level-based command filtering demo
+        demonstrate_level_based_commands()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--all":
+        # Show both demos
+        demonstrate_level_based_commands()
+        print("\n\n")
+        demonstrate_gameplay_features()
+    else:
+        # Default: show gameplay features demo
+        print("Usage: python code_generator.py [--levels|--all]")
+        print("  --levels: Show level-based command filtering demo")
+        print("  --all: Show all demonstrations")
+        print("\nRunning default demonstration...\n")
+        demonstrate_gameplay_features()
 
